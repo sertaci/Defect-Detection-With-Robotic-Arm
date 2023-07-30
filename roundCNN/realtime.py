@@ -17,13 +17,13 @@ import tensorflow as tf
 import numpy as np
 
 # Loading model
-model = tf.keras.models.load_model('model.h5')
+model = tf.keras.models.load_model('modelRing.h5')
 
 # Starting cam
 cap = cv2.VideoCapture(0)
-size = (300,300)
+size = (300, 300)
 
-class_labels = {0: 'OK', 1: 'Defective'}  
+class_labels = {1: 'OK', 0: 'Defective'}  
 
 def preprocess_image(image):
     # Convert frames to grayscale (dataset was trained with grayscale images)
@@ -37,7 +37,7 @@ def preprocess_image(image):
     
     return processed_image
 
-def postprocess_predictions(predictions):    
+def postprocess_predictions(predictions, frame):    
     # Get predicted label
     predicted_label = class_labels[int(predictions>=0.5)]
     
@@ -64,7 +64,7 @@ def main():
         # Prediction
         [[predictions]] = model.predict(np.expand_dims(processed_frame, axis=0))
         
-        result = postprocess_predictions(predictions)
+        result = postprocess_predictions(predictions, processed_frame)
 
         # Putting results to the screen
         cv2.imshow('Prediction', result)
