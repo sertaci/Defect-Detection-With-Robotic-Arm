@@ -21,7 +21,7 @@ model = tf.keras.models.load_model('modelRing.h5')
 
 # Starting cam
 cap = cv2.VideoCapture(0)
-size = (300, 300)
+size = (500, 500)
 
 class_labels = {1: 'OK', 0: 'Defective'}  
 
@@ -60,9 +60,9 @@ def main():
 
         # Changing stream for prediction
         processed_frame = preprocess_image(frame)
-
+        resized = np.expand_dims(processed_frame, axis=0)
         # Prediction
-        [[predictions]] = model.predict(np.expand_dims(processed_frame, axis=0))
+        [[predictions]] = model.predict(resized)
         
         result = postprocess_predictions(predictions, processed_frame)
 

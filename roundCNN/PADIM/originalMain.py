@@ -31,7 +31,7 @@ device = torch.device('cuda' if use_cuda else 'cpu')
 
 def parse_args():
     parser = argparse.ArgumentParser('PaDiM')
-    parser.add_argument('--data_path', type=str, default='D:/dataset/mvtec_anomaly_detection')
+    parser.add_argument('--data_path', type=str, default='E:/Github_Repos/Defect-Detection-With-Robotic-Arm/roundCNN/PADIM/mvtec_anomaly_detection')
     parser.add_argument('--save_path', type=str, default='./mvtec_result')
     parser.add_argument('--arch', type=str, choices=['resnet18', 'wide_resnet50_2'], default='wide_resnet50_2')
     return parser.parse_args()
@@ -192,7 +192,7 @@ def main():
         
         # get optimal threshold
         gt_mask = np.asarray(gt_mask_list)
-        precision, recall, thresholds =  (gt_mask.flatten(), scores.flatten())
+        precision, recall, thresholds = precision_recall_curve(gt_mask.flatten(), scores.flatten())
         a = 2 * precision * recall
         b = precision + recall
         f1 = np.divide(a, b, out=np.zeros_like(a), where=b != 0)

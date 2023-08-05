@@ -8,11 +8,10 @@ from collections import OrderedDict
 from scipy.spatial.distance import mahalanobis
 from scipy.ndimage import gaussian_filter
 from skimage import morphology
-from skimage.segmentation import mark_boundaries
 
 import torch
 import torch.nn.functional as F
-from torchvision.models import wide_resnet50_2, resnet18, Wide_ResNet50_2_Weights, ResNet18_Weights
+from torchvision.models import wide_resnet50_2, Wide_ResNet50_2_Weights
 import mvtec as mvtec
 
 import cv2
@@ -59,8 +58,15 @@ def main():
 
     idx = torch.tensor(sample(range(0, t_d), d))
 
+     # set model's intermediate outputs
+    outputs = []
+
     def hook(module, input, output):
         outputs.append(output)
+
+    model.layer1[-1].register_forward_hook(hook)
+    model.layer2[-1].register_forward_hook(hook)
+    model.layer3[-1].register_forward_hook(hook)
 
 
     while True:
@@ -69,18 +75,21 @@ def main():
 
         # Resizing the frame
         resized_frame = cv2.resize(fframe, size)  
+
+        a = cv2.imread("E:/Github_Repos/Defect-Detection-With-Robotic-Arm/roundCNN/PADIM/mvtec_anomaly_detection/bottle/test/broken_small/009.png")
+        resized_frame = cv2.resize(a, size)
+
+        mean = np.array([0.485, 0.456, 0.406])
+        std = np.array([0.229, 0.224, 0.225])
+        normalized = (((resized_frame * std) + mean) * 255.).astype(np.uint8)
+
+        frame_transposed = normalized.transpose((2, 0, 1))  # Channel-last -> Channel-first
     
-        x = np.expand_dims(resized_frame, axis=0)
+        x = np.expand_dims(frame_transposed, axis=0)
 
-        # set model's intermediate outputs
-        outputs = []
-        
-        model.layer1[-1].register_forward_hook(hook)
-        model.layer2[-1].register_forward_hook(hook)
-        model.layer3[-1].register_forward_hook(hook)
+        x = torch.from_numpy(x).float()
+       
 
-
-        train_outputs = OrderedDict([('layer1', []), ('layer2', []), ('layer3', [])])
         test_outputs = OrderedDict([('layer1', []), ('layer2', []), ('layer3', [])])
 
     
@@ -130,31 +139,42 @@ def main():
         max_score = score_map.max()
         min_score = score_map.min()
         scores = (score_map - min_score) / (max_score - min_score)
+        scores = np.expand_dims(scores, axis=0)
+
         
-    
-        
-        plot_fig(test_imgs, scores, gt_mask_list, threshold, save_dir, class_name)
+        new_mask = plot_fig(scores, 0.3)
+
+        edged = cv2.Canny(np.uint8(new_mask), 0, 255)
+        contours, hierarchy = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        cv2.drawContours(resized_frame, contours, -1, (0, 255, 0), 3)
+        cv2.imshow('Contours', resized_frame)
+        cv2.imwrite("YUZLESME.jpg", resized_frame)
+        cv2.imwrite("YUZLESME_MASK.jpg", new_mask)
 
 
-def plot_fig(test_img, scores, gts, threshold, save_dir, class_name):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+
+def plot_fig(scores, threshold):
     num = len(scores)
+
     for i in range(num):
-        img = test_img[i]
-        img = denormalization(img)
-        
         mask = scores[i]
         mask[mask > threshold] = 1
         mask[mask <= threshold] = 0
         kernel = morphology.disk(4)
         mask = morphology.opening(mask, kernel)
         mask *= 255
-        vis_img = mark_boundaries(img, mask, color=(1, 0, 0), mode='thick')
+
+        return mask
+    
 
 
 def denormalization(x):
     mean = np.array([0.485, 0.456, 0.406])
     std = np.array([0.229, 0.224, 0.225])
-    x = (((x.transpose(1, 2, 0) * std) + mean) * 255.).astype(np.uint8)
+    x = (((x * std) + mean) * 255.).astype(np.uint8)
     
     return x
 
@@ -176,3 +196,5 @@ def embedding_concat(x, y):
 
 if __name__ == '__main__':
     main()
+    cap.release()
+    cv2.destroyAllWindows()

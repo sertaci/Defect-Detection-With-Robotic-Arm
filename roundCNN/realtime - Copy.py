@@ -62,9 +62,6 @@ def main():
         # Changing stream for prediction
         processed_frame = preprocess_image(frame)
 
-
-
-
         # Prediction
         [[predictions]] = model.predict(np.expand_dims(processed_frame, axis=0))
         
@@ -82,3 +79,4 @@ if __name__ == "__main__":
     main() 
     cap.release()
     cv2.destroyAllWindows()
+    
